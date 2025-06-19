@@ -6,6 +6,7 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 from google.cloud import storage
+import base64
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -20,6 +21,14 @@ except KeyError:
 
 GEMINI_MODEL_NAME = "gemini-1.5-pro-latest"
 MODEL_INSTANCE = genai.GenerativeModel(GEMINI_MODEL_NAME) if GOOGLE_API_KEY else None
+
+gcp_credentials = os.environ.get("GOOGLE_CREDENTIALS")
+if gcp_credentials:
+    decoded = base64.b64decode(gcp_credentials)
+    with open("/tmp/google-credentials.json", "wb") as f:
+        f.write(decoded)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/google-credentials.json"
+
 
 # --- Google Cloud Storage Configuration ---
 # The client will automatically use the credentials from the environment variable we'll set later
