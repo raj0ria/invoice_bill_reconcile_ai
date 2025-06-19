@@ -14,6 +14,7 @@ class BillDetails(BaseModel):
     bill_tax_paid: float
     bill_total_paid: float
     line_items: List[Dict[str, Any]]
+    bill_file_url: str
 
 class InvoiceDetails(BaseModel):
     invoice_number: str
@@ -26,6 +27,7 @@ class InvoiceDetails(BaseModel):
     invoice_tax_due: float
     invoice_total_due: float
     line_items: List[Dict[str, Any]]
+    invoice_file_url: str
 
 class LineItemVerification(BaseModel):
     matched_items: List[Dict[str, Any]]

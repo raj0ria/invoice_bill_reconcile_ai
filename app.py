@@ -6,10 +6,8 @@ import uvicorn
 from typing import List
 from fastapi import FastAPI, File, UploadFile, HTTPException
 
-# Import configurations and modular functions
-from config.config import UPLOAD_DIRECTORY
 from utils.logs import logger
-from utils.file_processing import save_uploaded_file, extract_text_from_pdf
+from utils.file_processing import extract_text_from_pdf_stream, upload_file_to_cloud
 from utils.ai_processing import extract_data_with_gemini, INVOICE_PROMPT_TEMPLATE, BILL_PROMPT_TEMPLATE
 from utils.reconciliation import perform_reconciliation
 from utils.pydantic_models import ReconciliationResponse, InvoiceDetails, BillDetails
@@ -31,23 +29,25 @@ async def reconcile_invoice_endpoint(
 ):
     """
     Processes an invoice and associated bills, performs AI-powered data extraction,
-    and returns a detailed reconciliation report.
+    and returns a detailed reconciliation report including public file URLs.
     """
     try:
         # --- Process Invoice ---
         logger.info(f"Processing invoice: {invoice_file.filename}")
-        invoice_path = save_uploaded_file(invoice_file, UPLOAD_DIRECTORY)
-        invoice_text = extract_text_from_pdf(invoice_path)
+        invoice_text = extract_text_from_pdf_stream(invoice_file.file)
+        invoice_url = upload_file_to_cloud(invoice_file)
         invoice_json = extract_data_with_gemini(invoice_text, INVOICE_PROMPT_TEMPLATE)
+        invoice_json['invoice_file_url'] = invoice_url
         invoice_details = InvoiceDetails(**invoice_json)
 
         # --- Process Bills ---
         bill_details_list = []
         for bill_file in bill_files:
             logger.info(f"Processing bill: {bill_file.filename}")
-            bill_path = save_uploaded_file(bill_file, UPLOAD_DIRECTORY)
-            bill_text = extract_text_from_pdf(bill_path)
+            bill_text = extract_text_from_pdf_stream(bill_file.file)
+            bill_url = upload_file_to_cloud(bill_file)
             bill_json = extract_data_with_gemini(bill_text, BILL_PROMPT_TEMPLATE)
+            bill_json['bill_file_url'] = bill_url
             bill_details_list.append(BillDetails(**bill_json))
 
         # --- Perform Reconciliation ---
@@ -60,11 +60,9 @@ async def reconcile_invoice_endpoint(
             result=reconciliation_data
         )
     except HTTPException as e:
-        # Forward known HTTP errors
         raise e
     except Exception as e:
         logger.error(f"An unexpected error occurred in the endpoint: {e}", exc_info=True)
-        # Catch any other error and return a generic 500
         raise HTTPException(status_code=500, detail="An internal server error occurred.")
 
 if __name__ == '__main__':

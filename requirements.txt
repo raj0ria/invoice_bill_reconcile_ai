@@ -1,0 +1,16 @@
+# requirements.txt
+
+# Core web framework and server components
+fastapi
+uvicorn[standard]
+gunicorn
+
+# Google Cloud services
+google-generativeai
+google-cloud-storage
+
+# File processing
+pypdf2
+
+# Development utilities
+python-dotenv
